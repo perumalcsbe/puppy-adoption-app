@@ -1,0 +1,105 @@
+package com.example.androiddevchallenge.ui.utils
+
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.OnBackPressedDispatcher
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.staticCompositionLocalOf
+import android.os.Parcelable
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.toMutableStateList
+
+/**
+ * An effect for handling presses of the device back button.
+ */
+@Composable
+fun BackHandler(
+    enabled: Boolean = true,
+    onBack: () -> Unit
+) {
+    // Safely update the current `onBack` lambda when a new one is provided
+    val currentOnBack by rememberUpdatedState(onBack)
+    // Remember in Composition a back callback that calls the `onBack` lambda
+    val backCallback = remember {
+        object : OnBackPressedCallback(enabled) {
+            override fun handleOnBackPressed() {
+                currentOnBack()
+            }
+        }
+    }
+    // On every successful composition, update the callback with the `enabled` value
+    SideEffect {
+        backCallback.isEnabled = enabled
+    }
+    val backDispatcher = LocalBackDispatcher.current
+    // If `backDispatcher` changes, dispose and reset the effect
+    DisposableEffect(backDispatcher) {
+        // Add callback to the backDispatcher
+        backDispatcher.addCallback(backCallback)
+        // When the effect leaves the Composition, remove the callback
+        onDispose {
+            backCallback.remove()
+        }
+    }
+}
+
+/**
+ * An [androidx.compose.runtime.Ambient] providing the current [OnBackPressedDispatcher]. You must
+ * [provide][androidx.compose.runtime.Providers] a value before use.
+ */
+internal val LocalBackDispatcher = staticCompositionLocalOf<OnBackPressedDispatcher> {
+    error("No Back Dispatcher provided")
+}
+
+
+
+/**
+ * A simple navigator which maintains a back stack.
+ * inspired from Jetsnack sample
+ */
+class Navigator<T : Parcelable> private constructor(
+    initialBackStack: List<T>,
+    backDispatcher: OnBackPressedDispatcher
+) {
+    constructor(
+        initial: T,
+        backDispatcher: OnBackPressedDispatcher
+    ) : this(listOf(initial), backDispatcher)
+
+    private val backStack = initialBackStack.toMutableStateList()
+    private val backCallback = object : OnBackPressedCallback(canGoBack()) {
+        override fun handleOnBackPressed() {
+            back()
+        }
+    }.also { callback ->
+        backDispatcher.addCallback(callback)
+    }
+    val current: T get() = backStack.last()
+
+    fun back() {
+        backStack.removeAt(backStack.lastIndex)
+        backCallback.isEnabled = canGoBack()
+    }
+
+    fun navigate(destination: T) {
+        backStack += destination
+        backCallback.isEnabled = canGoBack()
+    }
+
+    private fun canGoBack(): Boolean = backStack.size > 1
+
+    companion object {
+        /**
+         * Serialize the back stack to save to instance state.
+         */
+        fun <T : Parcelable> saver(backDispatcher: OnBackPressedDispatcher) =
+            listSaver<Navigator<T>, T>(
+                save = { navigator -> navigator.backStack.toList() },
+                restore = { backstack -> Navigator(backstack, backDispatcher) }
+            )
+    }
+}
