@@ -20,6 +20,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 
+// Pet theme colors
+
+val primaryColor = Color(0xFFf9fafa)
+val primaryLightColor = Color(0xFFffffff)
+val primaryDarkColor = Color(0xFFc6c7c7)
+val secondaryColor = Color(0xFF66afaa)
+val secondaryLightColor = Color(0xFF97e1dc)
+val secondaryDarkColor = Color(0xFF357f7b)
+val primaryTextColor = Color(0xFF000000)
+val secondaryTextColor = Color(0xFFffffff)
+
 val purple200 = Color(0xFFBB86FC)
 val purple500 = Color(0xFF6200EE)
 val purple700 = Color(0xFF3700B3)
